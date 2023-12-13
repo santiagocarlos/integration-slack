@@ -29,7 +29,7 @@ Route::get('/slack', function () {
 
 Route::get('principal/{user}', [SlackController::class, 'index']);
 
-Route::get('/get-response-slack', [SlackController::class, 'getResponseSlack']);
+Route::get('/get-response-slack?action=oauth', [SlackController::class, 'getResponseSlack']);
 
 
 Route::middleware('auth')->group(function () {

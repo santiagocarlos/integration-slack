@@ -90,46 +90,59 @@ class SlackController extends Controller
         return SlackResponse::where('user_id', $user->id)->first();
     }
 
-    public function getResponseSlack(Request $request, SlackAccess $access)
+    public function getResponseSlack(Request $request, Slack $slack): void
     {
-        $this->do_oauth($request->input('code'), $access);
+        $slack->do_oauth($request->input('code'), $slack);
     }
 
 
-    public function do_oauth($code, SlackAccess $access): SlackAccess
+    function do_action(Slack $slack, Request $request)
     {
-        $slack = new Slack($access);
+        $result_message = '';
 
-        // Set up the request headers
-        $headers = array('Accept' => 'application/json');
+        switch ( $request->input('action') ) {
 
-        // Add the application id and secret to authenticate the request
-        $options = array('auth' => array($this->get_client_id(), $this->get_client_secret()));
+            // Handles the OAuth callback by exchanging the access code to
+            // a valid token and saving it in a file
+            case 'oauth':
+                $code = $request->input('code');
 
-        // Add the one-time token to request parameters
-        $data = array('code' => $code);
+                // Exchange code to valid access token
+                try {
+                    $access = $slack->do_oauth($code);
+                    if ( $access ) {
+                        file_put_contents( 'access.txt', $access->to_json() );
+                        $result_message = 'The application was successfully added to your Slack channel';
+                    }
+                } catch ( Slack_API_Exception $e ) {
+                    $result_message = $e->getMessage();
+                }
+                break;
 
-        $response = \WpOrg\Requests\Requests::post($slack->api_root . 'oauth.access', $headers, $data, $options);
+            // Sends a notification to Slack
+            case 'send_notification':
+                $message = isset( $_REQUEST['text'] ) ? $_REQUEST['text'] : 'Hello!';
 
-        // Handle the JSON response
-        $json_response = json_decode($response->body);
+                try {
+                    $slack->send_notification( $message );
+                    $result_message = 'Notification sent to Slack channel.';
+                } catch ( Slack_API_Exception $e ) {
+                    $result_message = $e->getMessage();
+                }
+                break;
 
-        if (! $json_response->ok) {
-            // There was an error in the request
-            echo "error";
-            //throw new Slack_API_Exception( $json_response->error );
+            // Responds to a Slack slash command. Notice that commands are registered
+            // at Slack initialization.
+            case 'command':
+                $slack->do_slash_command();
+                break;
+
+            default:
+                break;
+
         }
 
-        // The action was completed successfully, store and return access data
-        return new SlackAccess(
-            array(
-                'access_token' => $json_response->access_token,
-                'scope' => explode( ',', $json_response->scope ),
-                'team_name' => $json_response->team_name,
-                'team_id' => $json_response->team_id,
-                'incoming_webhook' => $json_response->incoming_webhook
-            )
-        );
+        return $result_message;
     }
 
    public function get_client_id()
