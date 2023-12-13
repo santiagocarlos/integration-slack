@@ -90,17 +90,17 @@ class SlackController extends Controller
         return SlackResponse::where('user_id', $user->id)->first();
     }
 
-    public function getResponseSlack(Request $request, Slack $slack): void
+    public function getResponseSlack(Slack $slack, Request $request): void
     {
-        $slack->do_oauth($request->input('code'), $slack);
+        $this->do_action($slack, $request);
     }
 
 
-    function do_action(Slack $slack, Request $request)
+    private function do_action(Slack $slack, Request $request): void
     {
         $result_message = '';
 
-        switch ( $request->input('action') ) {
+        switch ($request->input('action')) {
 
             // Handles the OAuth callback by exchanging the access code to
             // a valid token and saving it in a file
@@ -110,6 +110,7 @@ class SlackController extends Controller
                 // Exchange code to valid access token
                 try {
                     $access = $slack->do_oauth($code);
+                    dd($access);
                     if ( $access ) {
                         file_put_contents( 'access.txt', $access->to_json() );
                         $result_message = 'The application was successfully added to your Slack channel';
@@ -142,7 +143,6 @@ class SlackController extends Controller
 
         }
 
-        return $result_message;
     }
 
    public function get_client_id()
