@@ -90,13 +90,12 @@ class SlackController extends Controller
         return SlackResponse::where('user_id', $user->id)->first();
     }
 
-    public function getResponseSlack(Slack $slack, Request $request): void
+    public function getResponseSlack(Request $request): void
     {
-        $this->do_action($slack, $request);
+        $this->do_action($request);
     }
 
-
-    private function do_action(Slack $slack, Request $request): void
+    private function do_action(Request $request): void
     {
         $result_message = '';
 
@@ -107,6 +106,7 @@ class SlackController extends Controller
             case 'oauth':
                 $code = $request->input('code');
 
+                $slack = new Slack();
                 // Exchange code to valid access token
                 try {
                     $access = $slack->do_oauth($code);

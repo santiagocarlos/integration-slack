@@ -11,7 +11,7 @@ class SlackAccess
     private $team_id;
     private $incoming_webhook;
 
-    public function __construct( $data )
+    public function __construct()
     {
 
     }

@@ -6,10 +6,8 @@ class Slack
 {
     public string $api_root = 'https://slack.com/api/';
 
-    public SlackAccess $access;
-    public function __construct(SlackAccess $access)
+    public function __construct()
     {
-        $this->access = $access;
     }
 
     public function do_oauth( $code ): SlackAccess
@@ -35,7 +33,7 @@ class Slack
         }
 
         // The action was completed successfully, store and return access data
-        $this->access = new SlackAccess(
+        return new SlackAccess(
             array(
                 'access_token' => $json_response->access_token,
                 'scope' => explode(',', $json_response->scope),
@@ -44,8 +42,6 @@ class Slack
                 'incoming_webhook' => $json_response->incoming_webhook
             )
         );
-
-        return $this->access;
     }
 
     public function get_client_id()
