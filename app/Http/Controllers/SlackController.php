@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Slack;
+use App\Models\SlackAccess;
 use App\Models\SlackResponse;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -88,8 +90,55 @@ class SlackController extends Controller
         return SlackResponse::where('user_id', $user->id)->first();
     }
 
-    public function getResponseSlack(Request $request)
+    public function getResponseSlack(Request $request, SlackAccess $access)
     {
-        dd($request);
+        $this->do_oauth($request->input('code'), $access);
     }
+
+
+    public function do_oauth($code, SlackAccess $access): SlackAccess
+    {
+        $slack = new Slack($access);
+
+        // Set up the request headers
+        $headers = array('Accept' => 'application/json');
+
+        // Add the application id and secret to authenticate the request
+        $options = array('auth' => array($this->get_client_id(), $this->get_client_secret()));
+
+        // Add the one-time token to request parameters
+        $data = array('code' => $code);
+
+        $response = \WpOrg\Requests\Requests::post($slack->api_root . 'oauth.access', $headers, $data, $options);
+
+        // Handle the JSON response
+        $json_response = json_decode($response->body);
+
+        if (! $json_response->ok) {
+            // There was an error in the request
+            echo "error";
+            //throw new Slack_API_Exception( $json_response->error );
+        }
+
+        // The action was completed successfully, store and return access data
+        return new SlackAccess(
+            array(
+                'access_token' => $json_response->access_token,
+                'scope' => explode( ',', $json_response->scope ),
+                'team_name' => $json_response->team_name,
+                'team_id' => $json_response->team_id,
+                'incoming_webhook' => $json_response->incoming_webhook
+            )
+        );
+    }
+
+   public function get_client_id()
+   {
+       return config('slack.client_id');
+   }
+
+   public function get_client_secret()
+   {
+       return config('slack.client_id');
+   }
 }
